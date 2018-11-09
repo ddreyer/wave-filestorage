@@ -1,1 +1,1 @@
-# wave-filestorage
+# wave-objectstorage for CS261

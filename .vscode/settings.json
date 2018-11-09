@@ -1,0 +1,34 @@
+{
+    "python.pythonPath": "/usr/local/bin/python3",
+    "python.linting.pylintPath": "/usr/local/bin/pylint",
+
+    "deploy": {
+        "targets": [
+            {
+                "type": "sftp",
+                "name": "Wave SGX server",
+                "description": "wave object store project",
+                "host": "ante.cs.berkeley.edu", "port": 22,
+                "dir": "wave-objectstore",
+                "user": "sgx",
+                "privateKey": "/Users/dyldreyer/.ssh/github_rsa",
+
+                "checkBeforeDeploy": true,
+
+                "deployOnSave": true,
+
+ 
+                
+            },
+        ],
+        "packages": [
+            {
+                "name": "Wave object store",
+                "files": [
+                    "**/*",
+                ],
+                "deployOnSave": true
+            },
+        ]
+    },
+}
