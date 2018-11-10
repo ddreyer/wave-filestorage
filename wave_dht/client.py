@@ -8,7 +8,6 @@ class Client:
         channel = grpc.insecure_channel("localhost:410")
         self.agent = wv.WAVEStub(channel)
         self.ent = self.agent.CreateEntity(wv.CreateEntityParams())
-        self.pub_hash = str(base64.b64encode(self.ent.hash), "utf8").replace("=", "")
         self.agent.PublishEntity(wv.PublishEntityParams(DER=self.ent.PublicDER))
         self.perspective = wv.Perspective(
             entitySecret=wv.EntitySecret(DER=self.ent.SecretDER)
@@ -16,26 +15,21 @@ class Client:
         self.wdht_handle = wdht.WaveDht()
 
 
-    def put(self, key, value):
+    def put(self, key, value, namespace):
         encrypted = self.agent.EncryptMessage(
             wv.EncryptMessageParams(
-                namespace=self.ent.hash,
-                resource=str(key),
+                namespace=namespace,
+                resource=key,
                 content=value))
 
         if encrypted.error.code != 0:
             raise Exception(encrypted.error.message)
 
         print("in client put")
-        print("/".join(key.split("/")[:-1]), self.pub_hash)
-        # print(key.split("/")[0])
-        # print(self.pub_hash)
-        # print(key.split("/")[0] == self.pub_hash)
-        # print(str(key))
 
         # if we are trying to put on a resource in our namespace, sign
         # key contains modified entity hash of namespace that the object is under
-        if "/".join(key.split("/")[:-1]) == self.pub_hash:
+        if (key.split("/")[0]) == str(hash(self.ent.hash)):
             print("client is signing")
             sig = self.agent.Sign(wv.SignParams(
                 perspective=self.perspective,
@@ -43,19 +37,19 @@ class Client:
             ))
             if sig.error.code != 0:
                 raise Exception(sig.error.message)
-            self.wdht_handle.put(key, encrypted.ciphertext, sig.signature, False)
+
+            print("key is: ", key)
+            self.wdht_handle.put(key, encrypted.ciphertext, sig.signature, False, namespace)
         else:
             print("client is building proof")
-            print("/".join(key.split("/")[:-1]) + "==")
-            print(self.pub_hash)
-            decode = base64.b64decode("/".join(key.split("/")[:-1]) + "==")
+            
             proof = self.agent.BuildRTreeProof(wv.BuildRTreeProofParams(
                 perspective=self.perspective,
-                namespace=base64.b64decode("/".join(key.split("/")[:-1]) + "=="),
+                namespace=namespace,
                 resyncFirst=True,
                 statements=[
                     wv.RTreePolicyStatement(
-                        permissionSet=base64.b64decode("/".join(key.split("/")[:-1]) + "=="),
+                        permissionSet=namespace,
                         permissions=["write"],
                         resource=key,
                     )
@@ -64,7 +58,8 @@ class Client:
             if proof.error.code != 0:
                 raise Exception(proof.error.message)
 
-            self.wdht_handle.put(key, encrypted.ciphertext, proof.proofDER, True)
+            print("key is: ", key)
+            self.wdht_handle.put(key, encrypted.ciphertext, proof.proofDER, True, namespace)
 
 
 
@@ -92,10 +87,11 @@ class Client:
                 resyncFirst=True))
             if resp.error.code == 0:
                 return resp.content
-        return None
+        raise Exception("could not decrypt results")
     
     def set(self, key, subj, perms=None):
-        print("in set")
+        print("in set, creating attestation")
+        print("resource: ", key)
         att = self.agent.CreateAttestation(wv.CreateAttestationParams(
             perspective=self.perspective,
             subjectHash=subj,
@@ -106,11 +102,30 @@ class Client:
                 statements=[
                     wv.RTreePolicyStatement(
                         # This is a permission set used for special permissions
-                        permissionSet=wv.WaveBuiltinPSET if not perms else self.ent.hash,
+                        permissionSet=wv.WaveBuiltinPSET,
                         # this special permission generates end-to-end decryption keys
-                        permissions=[wv.WaveBuiltinE2EE] if not perms else perms,
+                        permissions=[wv.WaveBuiltinE2EE],
                         resource=key,
                     )]
             ))))
         if att.error.code != 0:
             raise Exception(att.error.message)
+        if perms:
+            att = self.agent.CreateAttestation(wv.CreateAttestationParams(
+                perspective=self.perspective,
+                subjectHash=subj,
+                publish=True,
+                policy=wv.Policy(rTreePolicy=wv.RTreePolicy(
+                    namespace=self.ent.hash,
+                    indirections=5,
+                    statements=[
+                        wv.RTreePolicyStatement(
+                            # This is a permission set used for special permissions
+                            permissionSet=self.ent.hash,
+                            # this special permission generates end-to-end decryption keys
+                            permissions=perms,
+                            resource=key,
+                        )]
+                ))))
+            if att.error.code != 0:
+                raise Exception(att.error.message)
