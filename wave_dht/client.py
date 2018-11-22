@@ -65,21 +65,7 @@ class Client:
 
     # for now, just fetch the data that is protected with E2EE
     def get(self, key):
-        # proof = self.agent.BuildRTreeProof(wv.BuildRTreeProofParams(
-        #     perspective=self.perspective,
-        #     namespace=namespace.ent.hash,
-        #     statements=[
-        #         wv.RTreePolicyStatement(
-        #             permissionSet=wv.WaveBuiltinPSET,
-        #             permissions=[wv.WaveBuiltinE2EE],
-        #             resource=key,
-        #         )
-        #     ]
-        # ))
         results = self.wdht_handle.get(key)
-        # self.agent.ResyncPerspectiveGraph(wv.ResyncPerspectiveGraphParams(
-        #     perspective=self.perspective,
-        # ))
         for r in results:
             resp = self.agent.DecryptMessage(wv.DecryptMessageParams(
                 perspective= self.perspective,
@@ -89,7 +75,9 @@ class Client:
                 return resp.content
         raise Exception("could not decrypt results")
     
-    def set(self, key, subj, perms=None):
+    def set(self, key, subj, namespace, perms=None):
+        if (str(hash(namespace)) != key.split("/")[0]):
+                raise Exception("invalid namespace set")
         print("in set, creating attestation")
         print("resource: ", key)
         att = self.agent.CreateAttestation(wv.CreateAttestationParams(
@@ -97,7 +85,7 @@ class Client:
             subjectHash=subj,
             publish=True,
             policy=wv.Policy(rTreePolicy=wv.RTreePolicy(
-                namespace=self.ent.hash,
+                namespace=namespace,
                 indirections=5,
                 statements=[
                     wv.RTreePolicyStatement(
@@ -116,13 +104,11 @@ class Client:
                 subjectHash=subj,
                 publish=True,
                 policy=wv.Policy(rTreePolicy=wv.RTreePolicy(
-                    namespace=self.ent.hash,
+                    namespace=namespace,
                     indirections=5,
                     statements=[
                         wv.RTreePolicyStatement(
-                            # This is a permission set used for special permissions
-                            permissionSet=self.ent.hash,
-                            # this special permission generates end-to-end decryption keys
+                            permissionSet=namespace,
                             permissions=perms,
                             resource=key,
                         )]
