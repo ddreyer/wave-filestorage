@@ -33,6 +33,12 @@ def setup_network(is_wave=False, N=100):
 
 	return nodes
 
+def get_key(k, is_wave):
+	if is_wave:
+		return str(hash(self.client1.ent.hash)) + "/%s" % k
+	else:
+		return str(k)
+
 class TestWaveDht(unittest.TestCase):
     def setUp(self):
     	pass
@@ -51,7 +57,7 @@ class TestWaveDht(unittest.TestCase):
 			node = nodes[k % N]
 
 			# blocking call (provide callback arguments to make the call non-blocking)
-			key = str(k)
+			key = get_key(k, is_wave=IS_WAVE)
 			val = np.random.bytes(NUM_BYTES)
 			node.put(dht.InfoHash.get(key), dht.Value(val))
 		return nodes
@@ -66,7 +72,7 @@ class TestWaveDht(unittest.TestCase):
 				node = nodes[k % N]
 
 				# blocking call (provide callback arguments to make the call non-blocking)
-				key = str(k)
+				key = get_key(k, is_wave=IS_WAVE)
 				val = np.random.bytes(NUM_BYTES)
 
 				if IS_WAVE:
@@ -90,7 +96,7 @@ class TestWaveDht(unittest.TestCase):
 				node = nodes[k % N]
 
 				# blocking call (provide callback arguments to make the call non-blocking)
-				key = str(k)
+				key = get_key(k, is_wave=IS_WAVE)
 				results = node.get(dht.InfoHash.get(key))
 
 		times = timeit.repeat(f, number=1)
@@ -109,20 +115,14 @@ class TestWaveDht(unittest.TestCase):
 				node = nodes[k % N]
 				subject = nodes[(k + 1) % N]
 
-				key = str(k)
-				self.client1.set(key, subject.ent.hash)
+				key = get_key(k, is_wave=IS_WAVE)
+				node.set(key, subject.ent.hash)
 
 		times = timeit.repeat(f, number=1)
 		print("[%s]: %d nodes, %d SETS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_SETS, NUM_BYTES, min(times)))
 
-	def test_long_set(self):
-		    #     self.client1.put(key, b"hello world", self.client1.ent.hash)
-    #     self.assertEqual(self.client1.get(key), b"hello world")
-    #     self.client1.set(key, self.client2.ent.hash, self.client1.ent.hash)
-    #     self.assertEqual(self.client2.get(key), b"hello world")
-    #     self.assertEqual(self.client1.get(key), b"hello world")
-    #     self.client2.set(key, client3.ent.hash, self.client1.ent.hash)
-    #     self.assertEqual(client3.get(key), b"hello world")
+	def test_long_set_get(self):
+    	assert(IS_WAVE)
     	N = 100
     	NUM_BYTES = 2**10
 		NUM_PUTS = 1000
@@ -141,7 +141,8 @@ class TestWaveDht(unittest.TestCase):
 			times = timeit.repeat(node.get(key), number=1)
 			print(k, min(times))
 
-	# def test_random_bulkd
+	# def test_random_bulk_put_get(self):
+
 			
 if __name__ == '__main__':
     unittest.main()
