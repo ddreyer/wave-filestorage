@@ -6,6 +6,10 @@ import unittest
 import numpy as np
 import timeit
 
+# import imp
+
+# dht = imp.load_source('opendht', '/usr/local/lib/python3.6/dist-packages/opendht.cpython-36m-x86_64-linux-gnu.so')
+
 IS_WAVE = False
 LABEL = "WAVE" if IS_WAVE else "DHT"
 
@@ -33,9 +37,9 @@ def setup_network(is_wave=False, N=100):
 
     return nodes
 
-def get_key(k, is_wave):
+def get_key(k, is_wave, namespace=None):
     if is_wave:
-        return str(hash(self.client1.ent.hash)) + "/%s" % k
+        return str(hash(namespace)) + "/%s" % k
     else:
         return str(k)
 
@@ -63,16 +67,18 @@ class TestWaveDht(unittest.TestCase):
         return nodes
 
     def test_bulk_put(self):
-        N = 100
+        N = 10
+        print("Setting up network...")
         nodes = setup_network(is_wave=IS_WAVE, N=N)
+        print("Finished setup...")
         NUM_BYTES = 2**10
-        NUM_PUTS = 1000
+        NUM_PUTS = 10
         def f():
             for k in range(NUM_PUTS):
                 node = nodes[k % N]
 
                 # blocking call (provide callback arguments to make the call non-blocking)
-                key = get_key(k, is_wave=IS_WAVE)
+                key = get_key(k, is_wave=IS_WAVE, namespace=node.ent.hash if IS_WAVE else None)
                 val = np.random.bytes(NUM_BYTES)
 
                 if IS_WAVE:
@@ -140,7 +146,35 @@ class TestWaveDht(unittest.TestCase):
             node = nodes[k]
             times = timeit.repeat(node.get(key), number=1)
             print(k, min(times))
+    
+    def test_bulk_set_put(self):
+        assert(IS_WAVE)
+        N = 10
+        NUM_BYTES = 2**10
+        NUM_PUTS = 10
 
+        # nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
+        nodes = setup_network(is_wave=IS_WAVE, N=N)
+        # key = str(hash(self.client1.ent.hash)) + "/obj1"
+    
+        for k in range(N - 1):
+            node = nodes[k]
+            subject = nodes[k + 1]
+            key = get_key(k, is_wave=IS_WAVE, namespace=node.ent.hash if IS_WAVE else None)
+            node.set(key, subject.ent.hash, node.ent.hash, ["write"])
+
+        def f():
+            for k in range(N - 1):
+                node = nodes[k]
+                subject = nodes[k + 1]
+
+                key = get_key(k, is_wave=IS_WAVE, namespace=node.ent.hash if IS_WAVE else None)
+                val = np.random.bytes(NUM_BYTES)
+                subject.put(key, val, node.ent.hash)
+
+        times = timeit.repeat(f, number=1)
+        print("[%s]: %d nodes, %d PUTS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_PUTS, NUM_BYTES, min(times)))
+        # print(k, min(times))
     # def test_random_bulk_put_get(self):
 
             

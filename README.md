@@ -1,1 +1,1 @@
-# wave-objectstorage for CS261
+# WAVE DHT for CS261

@@ -63,9 +63,43 @@ class Client:
 
 
 
-    # for now, just fetch the data that is protected with E2EE
-    def get(self, key):
-        results = self.wdht_handle.get(key)
+    def get(self, key, namespace):
+        # if we are trying to get on a resource in our namespace, sign
+        # key contains modified entity hash of namespace that the object is under
+        print("in client get")
+        if (key.split("/")[0]) == str(hash(self.ent.hash)):
+            print("client is signing")
+            sig = self.agent.Sign(wv.SignParams(
+                perspective=self.perspective,
+                content=b"get"
+            ))
+            if sig.error.code != 0:
+                raise Exception(sig.error.message)
+
+            print("key is: ", key)
+            results = self.wdht_handle.get(key, sig.signature, False, namespace)
+        else:
+            print("client is building proof")
+            
+            proof = self.agent.BuildRTreeProof(wv.BuildRTreeProofParams(
+                perspective=self.perspective,
+                namespace=namespace,
+                resyncFirst=True,
+                statements=[
+                    wv.RTreePolicyStatement(
+                        # This is a permission set used for special permissions
+                        permissionSet=wv.WaveBuiltinPSET,
+                        # this special permission generates end-to-end decryption keys
+                        permissions=[wv.WaveBuiltinE2EE],
+                        resource=key,
+                    )
+                ]
+            ))
+            if proof.error.code != 0:
+                raise Exception(proof.error.message)
+            results = self.wdht_handle.get(key, proof.proofDER, True, namespace)
+
+
         for r in results:
             resp = self.agent.DecryptMessage(wv.DecryptMessageParams(
                 perspective= self.perspective,
