@@ -10,38 +10,38 @@ IS_WAVE = False
 LABEL = "WAVE" if IS_WAVE else "DHT"
 
 def make_node(is_wave_client=False, ip="bootstrap.ring.cx", port="4222"):
-	node = None
+    node = None
 
-	if is_wave_client:
-		node = client.Client()
-	else:
-		node = dht.DhtRunner()
-		node.run()
+    if is_wave_client:
+        node = client.Client()
+    else:
+        node = dht.DhtRunner()
+        node.run()
 
-		# Join the network through any running node,
-		# here using a known bootstrap node.
-		node.bootstrap(ip, port)
+        # Join the network through any running node,
+        # here using a known bootstrap node.
+        node.bootstrap(ip, port)
 
-	return node
+    return node
 
 def setup_network(is_wave=False, N=100):
-	# Make N nodes / wave clients
-	nodes = []
-	for i in range(N):
-		node = make_node(is_wave)
-		nodes.append(node)
+    # Make N nodes / wave clients
+    nodes = []
+    for i in range(N):
+        node = make_node(is_wave)
+        nodes.append(node)
 
-	return nodes
+    return nodes
 
 def get_key(k, is_wave):
-	if is_wave:
-		return str(hash(self.client1.ent.hash)) + "/%s" % k
-	else:
-		return str(k)
+    if is_wave:
+        return str(hash(self.client1.ent.hash)) + "/%s" % k
+    else:
+        return str(k)
 
 class TestWaveDht(unittest.TestCase):
     def setUp(self):
-    	pass
+        pass
         # self.client1 = client.Client()
         # self.client2 = client.Client()
 
@@ -52,98 +52,98 @@ class TestWaveDht(unittest.TestCase):
     #     self.assertRaises(Exception, self.client2.get, key)
 
     def init_bulk_put(N, NUM_BYTES, NUM_PUTS):
-		nodes = setup_network(is_wave=IS_WAVE, N=N)
-		for k in range(NUM_PUTS):
-			node = nodes[k % N]
+        nodes = setup_network(is_wave=IS_WAVE, N=N)
+        for k in range(NUM_PUTS):
+            node = nodes[k % N]
 
-			# blocking call (provide callback arguments to make the call non-blocking)
-			key = get_key(k, is_wave=IS_WAVE)
-			val = np.random.bytes(NUM_BYTES)
-			node.put(dht.InfoHash.get(key), dht.Value(val))
-		return nodes
+            # blocking call (provide callback arguments to make the call non-blocking)
+            key = get_key(k, is_wave=IS_WAVE)
+            val = np.random.bytes(NUM_BYTES)
+            node.put(dht.InfoHash.get(key), dht.Value(val))
+        return nodes
 
     def test_bulk_put(self):
-    	N = 100
-    	nodes = setup_network(is_wave=IS_WAVE, N=N)
-    	NUM_BYTES = 2**10
-		NUM_PUTS = 1000
-    	def f():
-			for k in range(NUM_PUTS):
-				node = nodes[k % N]
+        N = 100
+        nodes = setup_network(is_wave=IS_WAVE, N=N)
+        NUM_BYTES = 2**10
+        NUM_PUTS = 1000
+        def f():
+            for k in range(NUM_PUTS):
+                node = nodes[k % N]
 
-				# blocking call (provide callback arguments to make the call non-blocking)
-				key = get_key(k, is_wave=IS_WAVE)
-				val = np.random.bytes(NUM_BYTES)
+                # blocking call (provide callback arguments to make the call non-blocking)
+                key = get_key(k, is_wave=IS_WAVE)
+                val = np.random.bytes(NUM_BYTES)
 
-				if IS_WAVE:
-					node.put(key, val, node.ent.hash)
-				else:
-					node.put(dht.InfoHash.get(key), dht.Value(val))
+                if IS_WAVE:
+                    node.put(key, val, node.ent.hash)
+                else:
+                    node.put(dht.InfoHash.get(key), dht.Value(val))
 
-		times = timeit.repeat(f, number=1)
-		print("[%s]: %d nodes, %d PUTS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_PUTS, NUM_BYTES, min(times)))
+        times = timeit.repeat(f, number=1)
+        print("[%s]: %d nodes, %d PUTS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_PUTS, NUM_BYTES, min(times)))
 
-	def test_bulk_get(self):
-		N = 100
-    	NUM_BYTES = 2**10
-		NUM_PUTS = 1000
+    def test_bulk_get(self):
+        N = 100
+        NUM_BYTES = 2**10
+        NUM_PUTS = 1000
 
-		nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
-		NUM_GETS = NUM_PUTS
+        nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
+        NUM_GETS = NUM_PUTS
 
-    	def f():
-			for k in range(NUM_GETS):
-				node = nodes[k % N]
+        def f():
+            for k in range(NUM_GETS):
+                node = nodes[k % N]
 
-				# blocking call (provide callback arguments to make the call non-blocking)
-				key = get_key(k, is_wave=IS_WAVE)
-				results = node.get(dht.InfoHash.get(key))
+                # blocking call (provide callback arguments to make the call non-blocking)
+                key = get_key(k, is_wave=IS_WAVE)
+                results = node.get(dht.InfoHash.get(key))
 
-		times = timeit.repeat(f, number=1)
-		print("[%s]: %d nodes, %d GETS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_GETS, NUM_BYTES, min(times)))
+        times = timeit.repeat(f, number=1)
+        print("[%s]: %d nodes, %d GETS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_GETS, NUM_BYTES, min(times)))
 
-	def test_bulk_set(self):
-		N = 100
-    	NUM_BYTES = 2**10
-		NUM_PUTS = 1000
+    def test_bulk_set(self):
+        N = 100
+        NUM_BYTES = 2**10
+        NUM_PUTS = 1000
 
-		nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
-		NUM_SETS = NUM_PUTS
+        nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
+        NUM_SETS = NUM_PUTS
 
-    	def f():
-			for k in range(NUM_SETS):
-				node = nodes[k % N]
-				subject = nodes[(k + 1) % N]
+        def f():
+            for k in range(NUM_SETS):
+                node = nodes[k % N]
+                subject = nodes[(k + 1) % N]
 
-				key = get_key(k, is_wave=IS_WAVE)
-				node.set(key, subject.ent.hash)
+                key = get_key(k, is_wave=IS_WAVE)
+                node.set(key, subject.ent.hash)
 
-		times = timeit.repeat(f, number=1)
-		print("[%s]: %d nodes, %d SETS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_SETS, NUM_BYTES, min(times)))
+        times = timeit.repeat(f, number=1)
+        print("[%s]: %d nodes, %d SETS of %d bytes ==> %.4f seconds" % (LABEL, N, NUM_SETS, NUM_BYTES, min(times)))
 
-	def test_long_set_get(self):
-    	assert(IS_WAVE)
-    	N = 100
-    	NUM_BYTES = 2**10
-		NUM_PUTS = 1000
+    def test_long_set_get(self):
+        assert(IS_WAVE)
+        N = 100
+        NUM_BYTES = 2**10
+        NUM_PUTS = 1000
 
-		nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
+        nodes = init_bulk_put(N, NUM_BYTES, NUM_PUTS)
 
-		# key = str(hash(self.client1.ent.hash)) + "/obj1"
-		key = str(0)
-		for k in range(N - 1):
-			node = nodes[k]
-			subject = nodes[k + 1]
-			node.set(key, subject.ent.hash, node.ent.hash)
+        # key = str(hash(self.client1.ent.hash)) + "/obj1"
+        key = str(0)
+        for k in range(N - 1):
+            node = nodes[k]
+            subject = nodes[k + 1]
+            node.set(key, subject.ent.hash, node.ent.hash)
 
-		for k in range(N):
-			node = nodes[k]
-			times = timeit.repeat(node.get(key), number=1)
-			print(k, min(times))
+        for k in range(N):
+            node = nodes[k]
+            times = timeit.repeat(node.get(key), number=1)
+            print(k, min(times))
 
-	# def test_random_bulk_put_get(self):
+    # def test_random_bulk_put_get(self):
 
-			
+            
 if __name__ == '__main__':
     unittest.main()
 
